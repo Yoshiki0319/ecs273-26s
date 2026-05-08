@@ -1,5 +1,9 @@
-import * as d3 from "d3";
 import { useEffect, useState } from "react";
+
+const newsFiles = import.meta.glob("../../data/stocknews/*/*.txt", {
+  query: "?raw",
+  import: "default",
+});
 
 export function NewsList({ selectedStock }) {
   const [news, setNews] = useState([]);
@@ -7,17 +11,16 @@ export function NewsList({ selectedStock }) {
 
   useEffect(() => {
     async function loadNews() {
-      const index = await d3.csv("/data/news-index.csv", d3.autoType);
-      const items = await Promise.all(
-        index
-          .filter((d) => d.ticker === selectedStock)
-          .map(async (d) =>
-            parseNews(
-              d.file,
-              await d3.text(`/data/stocknews/${selectedStock}/${d.file}`)
-            )
-          )
+      const stockEntries = Object.entries(newsFiles).filter(([path]) =>
+        path.includes(`/stocknews/${selectedStock}/`)
       );
+      const items = await Promise.all(
+        stockEntries.map(async ([path, loadContent]) =>
+          parseNews(path, await loadContent())
+        )
+      );
+
+      items.sort((a, b) => b.date.localeCompare(a.date));
 
       setNews(items);
       setOpenKey(null);
